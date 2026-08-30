@@ -1,0 +1,20 @@
+{
+    "name": "openreel-opencode",
+    "build": {
+        "dockerfile": "Dockerfile"
+    },
+    "remoteEnv": {
+        "OLLAMA_HOST": "http://host.docker.internal:11434",
+        "OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX": "1048576"
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": []
+        }
+    },
+    "mounts": [
+        "source=${localEnv:HOME}/.config/opencode,target=/home/vscode/.config/opencode,type=bind,consistency=cached",
+        "source=pnpm-store,target=/home/vscode/.local/share/pnpm/store,type=volume",
+        "source=pnpm-state,target=/home/vscode/.local/state/pnpm,type=volume"
+    ]
+}

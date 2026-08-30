@@ -92,3 +92,6 @@ xcuserdata/
 # Signing certs — never commit
 *.p12
 *.pfx
+
+# OpenCode caches
+.opencode/index/
