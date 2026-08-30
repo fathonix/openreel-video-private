@@ -19,3 +19,7 @@ RUN curl -fsSL https://opencode.ai/install | bash
 
 # Install neccsary npm packages
 RUN npm install -g pnpm open-codebase-index
+
+# After switching to USER vscode, ensure pnpm store dir exists and is owned correctly
+RUN mkdir -p /home/vscode/.local/share/pnpm/store \
+             /home/vscode/.local/state/pnpm
