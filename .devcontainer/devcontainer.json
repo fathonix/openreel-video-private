@@ -1,14 +1,9 @@
 {
     "name": "openreel-opencode",
-    "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
-    "features": {
-        "ghcr.io/devcontainers/features/node:2.1.0": {
-            "version": "24"
-        }
+    "build": {
+        "dockerfile": "Dockerfile"
     },
-    "postCreateCommand": "curl -fsSL https://opencode.ai/install | bash && npm install -g pnpm open-codebase-index",
     "remoteEnv": {
-        "PATH": "${containerEnv:PATH}:${containerEnv:HOME}/.local/bin",
         "OLLAMA_HOST": "http://host.docker.internal:11434",
         "OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX": "1048576"
     },
