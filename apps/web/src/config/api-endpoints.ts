@@ -18,12 +18,19 @@ export const OPENREEL_TTS_URL =
   (isDev ? "http://127.0.0.1:18000" : "https://cloud.openreel.video");
 
 /** OpenReel transcription service (GPU) */
-export const OPENREEL_TRANSCRIBE_URL = "https://cloud.openreel.video";
+export const OPENREEL_TRANSCRIBE_URL =
+  import.meta.env.VITE_OPENREEL_TRANSCRIBE_URL ||
+  (isDev ? "http://localhost:8000" : "https://cloud.openreel.video");
 
 /** OpenReel GPU cloud job worker (upscale, matting, transcription, music-gen, …) */
 export const OPENREEL_GPU_URL =
   import.meta.env.VITE_OPENREEL_GPU_BASE_URL ||
   (isDev ? "http://localhost:8000" : "https://ai.openreel.video");
+
+/** OpenReel auth broker (mints short-lived GPU JWTs) */
+export const OPENREEL_BROKER_URL =
+  import.meta.env.VITE_OPENREEL_AUTH_BROKER_BASE_URL ||
+  (isDev ? "http://localhost:8787" : "https://api.openreel.video");
 
 /**
  * Third-party API base URLs.

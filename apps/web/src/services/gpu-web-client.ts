@@ -1,5 +1,5 @@
 import type { AiCloudJobCreated, AiCloudJobStatusResponse } from "@openreel/core";
-import { OPENREEL_GPU_URL } from "../config/api-endpoints";
+import { OPENREEL_BROKER_URL, OPENREEL_GPU_URL } from "../config/api-endpoints";
 
 const BUNDLE_ID = "com.openreel.video";
 const INSTANCE_ID_STORAGE_KEY = "openreel.gpu.instanceId";
@@ -10,8 +10,7 @@ function trimTrailingSlash(value: string): string {
 }
 
 function brokerBaseUrl(): string {
-  const fromEnv = import.meta.env?.VITE_OPENREEL_AUTH_BROKER_BASE_URL as string | undefined;
-  return trimTrailingSlash(fromEnv && fromEnv.length > 0 ? fromEnv : "https://api.openreel.video");
+  return trimTrailingSlash(OPENREEL_BROKER_URL);
 }
 
 function gpuBaseUrl(): string {
