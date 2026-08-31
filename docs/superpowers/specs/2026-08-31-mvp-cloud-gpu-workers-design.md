@@ -52,6 +52,8 @@ Media requirement is derived from the existing `MEDIA_OPTIONAL_KINDS` set in `pa
 
 ## 5. Transcription / translation (infra path)
 
+> **Superseded (2026-08-31):** the infra HTTP path below has been replaced by the in-process TS engine for local use — see `2026-08-31-transcription-engine-ts-design.md`. The cloud-dispatch fallback described here is unchanged.
+
 `transcription.ts` wraps `infra/transcribe-gpu` (faster-whisper FastAPI service) via HTTP when `ctx.transcribeBaseUrl` is set:
 
 - `POST {base}/transcribe` — multipart form: `audio` blob + optional `language` / `target_language`.
