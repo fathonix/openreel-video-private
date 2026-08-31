@@ -17,6 +17,7 @@ allowBuilds:
   core-js: false
   electron: true
   esbuild: false
+  ffmpeg-static: true
   onnxruntime-node: false
   protobufjs: false
   sharp: false

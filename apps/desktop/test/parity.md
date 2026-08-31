@@ -88,9 +88,11 @@ human verification**:
 
 2. **Confirm the broker + GPU base URLs point at live services.** Verify
    `OPENREEL_AUTH_BROKER_BASE_URL`
-   (default `https://openreel-cloud.niiyeboah1996.workers.dev`) and
+   (default `https://api.openreel.video`) and
    `OPENREEL_GPU_BASE_URL` (default `https://ai.openreel.video`) resolve to the
-   deployed Worker and the live GPU render service.
+   deployed Worker and the live GPU render service. In an unpackaged dev build both
+   default to the local dev GPU worker server instead (`http://localhost:8000`,
+   which also serves the `/auth/*` broker endpoints).
 
 3. **Manual E2E — upscale a clip end to end.** Launch the desktop app, open the AI
    panel via the **Sparkles** toolbar toggle, select a single clip, and run

@@ -113,8 +113,11 @@ if (!hasSingleInstanceLock) {
 }
 
 const BROKER_BASE_URL =
-  process.env.OPENREEL_AUTH_BROKER_BASE_URL ?? "https://api.openreel.video";
-const GPU_BASE_URL = process.env.OPENREEL_GPU_BASE_URL ?? "https://ai.openreel.video";
+  process.env.OPENREEL_AUTH_BROKER_BASE_URL ??
+  (app.isPackaged ? "https://api.openreel.video" : "http://localhost:8000");
+const GPU_BASE_URL =
+  process.env.OPENREEL_GPU_BASE_URL ??
+  (app.isPackaged ? "https://ai.openreel.video" : "http://localhost:8000");
 const GPU_BUNDLE_ID = "com.openreel.video";
 
 let gpuClient: GpuJobClient | null = null;
