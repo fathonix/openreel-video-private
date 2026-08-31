@@ -3,12 +3,7 @@ import type { JobResult, JobRunner } from "@openreel/agent";
 export interface WorkerTaskContext {
   /** Existing GPU JobRunner (e.g. createGpuJobRunner(config)) or a test double. */
   readonly runner: JobRunner;
-  /** Base URL of the infra/transcribe-gpu FastAPI service; enables the in-repo Whisper path for transcription/translation. */
-  readonly transcribeBaseUrl?: string;
   readonly fetchFn?: typeof fetch;
-  readonly pollIntervalMs?: number;
-  readonly maxPollMs?: number;
-  readonly sleep?: (ms: number) => Promise<void>;
 }
 
 export type WorkerTask = (

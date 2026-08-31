@@ -5,6 +5,22 @@ import { runWorkerTask, WORKER_TASKS } from "./registry";
 import { WorkerValidationError } from "./types";
 import type { WorkerTaskContext } from "./types";
 
+vi.mock("./transcription-engine", () => ({
+  decodeAudioToFloat32: vi.fn(async () => new Float32Array([0, 0.5, -0.5, 1])),
+  transcribeAudio: vi.fn(
+    async (options: { targetLanguage?: string; language?: string }) => ({
+      text: "hello world",
+      words: [
+        { word: "hello", start: 0, end: 0.5 },
+        { word: "world", start: 0.5, end: 1 },
+      ],
+      language: options.targetLanguage === "en" ? "es" : (options.language ?? "en"),
+      duration: 1,
+    }),
+  ),
+  wordsToVtt: vi.fn(() => "WEBVTT\n\n"),
+}));
+
 function makeRunner(): { runner: JobRunner; calls: Array<{ kind: string; params: Record<string, unknown> }> } {
   const calls: Array<{ kind: string; params: Record<string, unknown> }> = [];
   const runner: JobRunner = async (kind, params) => {
@@ -15,14 +31,7 @@ function makeRunner(): { runner: JobRunner; calls: Array<{ kind: string; params:
 }
 
 function baseCtx(runner: JobRunner): WorkerTaskContext {
-  return { runner, sleep: async () => {}, pollIntervalMs: 1 };
-}
-
-function jsonResponse(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
+  return { runner };
 }
 
 const ALL_KINDS = Object.values(AI_CLOUD_JOB_KINDS) as AiCloudJobKind[];
@@ -41,7 +50,11 @@ describe("worker registry", () => {
   it("runs every kind end-to-end through a mock runner", async () => {
     for (const kind of ALL_KINDS) {
       const { runner, calls } = makeRunner();
-      const result = await runWorkerTask(kind, { mediaKey: "media-1" }, baseCtx(runner));
+      const result = await runWorkerTask(
+        kind,
+        { mediaKey: "media-1", target_language: "en" },
+        baseCtx(runner),
+      );
       expect(result.ok, `worker ${kind} failed`).toBe(true);
       expect(calls).toHaveLength(1);
       expect(calls[0].kind).toBe(kind);
@@ -77,29 +90,35 @@ describe("worker registry", () => {
 });
 
 describe("transcriptionWorker", () => {
-  it("wraps the infra transcribe-gpu service when configured", async () => {
-    const fetchFn = vi
-      .fn()
-      .mockResolvedValueOnce(jsonResponse({ jobId: "t1", status: "processing" }))
-      .mockResolvedValueOnce(
-        jsonResponse({ jobId: "t1", status: "completed", result: { text: "hello world" } }),
-      );
+  it("runs the in-process TS engine when media bytes are provided", async () => {
     const { runner, calls } = makeRunner();
     const result = await runWorkerTask(
       AI_CLOUD_JOB_KINDS.transcription,
-      { file: new Uint8Array([1, 2, 3]), filename: "clip.wav" },
-      { ...baseCtx(runner), transcribeBaseUrl: "http://infra.test", fetchFn: fetchFn as unknown as typeof fetch },
+      { file: new Uint8Array([1, 2, 3]), filename: "clip.wav", language: "en" },
+      baseCtx(runner),
     );
     expect(result.ok).toBe(true);
     expect((result.data as { text: string }).text).toBe("hello world");
+    expect((result.data as { vtt: string }).vtt).toBe("WEBVTT\n\n");
     expect(calls).toHaveLength(0);
-    const [submitUrl, submitInit] = fetchFn.mock.calls[0];
-    expect(submitUrl).toBe("http://infra.test/transcribe");
-    expect(submitInit?.method).toBe("POST");
-    expect(fetchFn.mock.calls[1][0]).toBe("http://infra.test/jobs/t1");
   });
 
-  it("falls back to the cloud dispatch kind when no infra base URL is set", async () => {
+  it("runs the in-process engine for http mediaUrl inputs", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(
+      new Response(new Uint8Array([9, 8, 7]).buffer, { status: 200 }),
+    );
+    const { runner, calls } = makeRunner();
+    const result = await runWorkerTask(
+      AI_CLOUD_JOB_KINDS.transcription,
+      { mediaUrl: "http://localhost:8000/media/x" },
+      { ...baseCtx(runner), fetchFn: fetchFn as unknown as typeof fetch },
+    );
+    expect(result.ok).toBe(true);
+    expect(fetchFn).toHaveBeenCalledWith("http://localhost:8000/media/x");
+    expect(calls).toHaveLength(0);
+  });
+
+  it("dispatches to the cloud runner when only a mediaKey is present", async () => {
     const { runner, calls } = makeRunner();
     const result = await runWorkerTask(
       AI_CLOUD_JOB_KINDS.transcription,
@@ -112,48 +131,55 @@ describe("transcriptionWorker", () => {
     expect(calls[0].params.language).toBe("en");
   });
 
-  it("propagates infra job failures", async () => {
-    const fetchFn = vi
-      .fn()
-      .mockResolvedValueOnce(jsonResponse({ jobId: "t2", status: "processing" }))
-      .mockResolvedValueOnce(jsonResponse({ jobId: "t2", status: "failed", error: "OOM" }));
+  it("returns ok:false when the engine fails", async () => {
+    const { decodeAudioToFloat32 } = await import("./transcription-engine");
+    vi.mocked(decodeAudioToFloat32).mockRejectedValueOnce(new Error("decode failed"));
     const { runner } = makeRunner();
     const result = await runWorkerTask(
       AI_CLOUD_JOB_KINDS.transcription,
       { file: new Uint8Array([1]) },
-      { ...baseCtx(runner), transcribeBaseUrl: "http://infra.test", fetchFn: fetchFn as unknown as typeof fetch },
+      baseCtx(runner),
     );
     expect(result.ok).toBe(false);
-    expect(result.error).toMatch(/OOM/);
+    expect(result.error).toMatch(/decode failed/);
+  });
+
+  it("rejects when neither media nor a mediaKey is provided", async () => {
+    const { runner } = makeRunner();
+    await expect(
+      runWorkerTask(AI_CLOUD_JOB_KINDS.transcription, {}, baseCtx(runner)),
+    ).rejects.toThrow(WorkerValidationError);
   });
 });
 
 describe("translationWorker", () => {
-  it("requires target_language on the infra path", async () => {
+  it("requires target_language", async () => {
+    const { runner } = makeRunner();
+    await expect(
+      runWorkerTask(AI_CLOUD_JOB_KINDS.translation, { file: new Uint8Array([1]) }, baseCtx(runner)),
+    ).rejects.toThrow(WorkerValidationError);
+  });
+
+  it("runs the engine with the whisper translate task for en", async () => {
+    const { runner, calls } = makeRunner();
+    const result = await runWorkerTask(
+      AI_CLOUD_JOB_KINDS.translation,
+      { file: new Uint8Array([1]), target_language: "en" },
+      baseCtx(runner),
+    );
+    expect(result.ok).toBe(true);
+    expect(calls).toHaveLength(0);
+  });
+
+  it("rejects non-en local translation", async () => {
     const { runner } = makeRunner();
     await expect(
       runWorkerTask(
         AI_CLOUD_JOB_KINDS.translation,
-        { file: new Uint8Array([1]) },
-        { ...baseCtx(runner), transcribeBaseUrl: "http://infra.test" },
+        { file: new Uint8Array([1]), target_language: "es" },
+        baseCtx(runner),
       ),
     ).rejects.toThrow(WorkerValidationError);
-  });
-
-  it("posts target_language to the infra service", async () => {
-    const fetchFn = vi
-      .fn()
-      .mockResolvedValueOnce(jsonResponse({ jobId: "x1", status: "completed", result: { text: "hola" } }));
-    const { runner, calls } = makeRunner();
-    const result = await runWorkerTask(
-      AI_CLOUD_JOB_KINDS.translation,
-      { file: new Uint8Array([1]), target_language: "es" },
-      { ...baseCtx(runner), transcribeBaseUrl: "http://infra.test", fetchFn: fetchFn as unknown as typeof fetch },
-    );
-    expect(result.ok).toBe(true);
-    expect(calls).toHaveLength(0);
-    const body = fetchFn.mock.calls[0][1]?.body as FormData;
-    expect(body.get("target_language")).toBe("es");
   });
 
   it("dispatches the media-optional cloud kind as fallback", async () => {
@@ -179,5 +205,33 @@ describe("musicGenerationWorker", () => {
     );
     expect(result.ok).toBe(true);
     expect(calls[0].kind).toBe(AI_CLOUD_JOB_KINDS.musicGeneration);
+  });
+});
+
+describe("wavToFloat32", () => {
+  it("decodes a 16-bit mono PCM WAV into samples", async () => {
+    const { wavToFloat32 } = await vi.importActual<typeof import("./transcription-engine")>(
+      "./transcription-engine",
+    );
+    const header = new Uint8Array(44);
+    header.set([0x52, 0x49, 0x46, 0x46], 0);
+    header.set([0x57, 0x41, 0x56, 0x45], 8);
+    header.set([0x66, 0x6d, 0x74, 0x20], 12);
+    header[16] = 16;
+    header[20] = 1;
+    header[22] = 1;
+    header[24] = 0x40;
+    header[25] = 0x1f;
+    header[34] = 16;
+    header.set([0x64, 0x61, 0x74, 0x61], 36);
+    header[40] = 4;
+    const pcm = new Uint8Array([0x00, 0x00, 0x00, 0x80]);
+    const wav = new Uint8Array(header.length + pcm.length);
+    wav.set(header);
+    wav.set(pcm, header.length);
+    const samples = wavToFloat32(wav);
+    expect(samples.length).toBe(2);
+    expect(samples[0]).toBe(0);
+    expect(samples[1]).toBe(-1);
   });
 });

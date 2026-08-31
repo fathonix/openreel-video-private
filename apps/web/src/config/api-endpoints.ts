@@ -27,10 +27,10 @@ export const OPENREEL_GPU_URL =
   import.meta.env.VITE_OPENREEL_GPU_BASE_URL ||
   (isDev ? "http://localhost:8000" : "https://ai.openreel.video");
 
-/** OpenReel auth broker (mints short-lived GPU JWTs) */
+/** OpenReel auth broker (mints short-lived GPU JWTs) — served by the dev GPU worker server in dev */
 export const OPENREEL_BROKER_URL =
   import.meta.env.VITE_OPENREEL_AUTH_BROKER_BASE_URL ||
-  (isDev ? "http://localhost:8787" : "https://api.openreel.video");
+  (isDev ? "http://localhost:8000" : "https://api.openreel.video");
 
 /**
  * Third-party API base URLs.

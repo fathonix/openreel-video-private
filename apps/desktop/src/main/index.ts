@@ -114,7 +114,7 @@ if (!hasSingleInstanceLock) {
 
 const BROKER_BASE_URL =
   process.env.OPENREEL_AUTH_BROKER_BASE_URL ??
-  (app.isPackaged ? "https://api.openreel.video" : "http://localhost:8787");
+  (app.isPackaged ? "https://api.openreel.video" : "http://localhost:8000");
 const GPU_BASE_URL =
   process.env.OPENREEL_GPU_BASE_URL ??
   (app.isPackaged ? "https://ai.openreel.video" : "http://localhost:8000");

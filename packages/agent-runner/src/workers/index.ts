@@ -8,8 +8,20 @@ export {
   createCloudJobRunner,
   cloudDispatchWorker,
 } from "./cloud-dispatch";
-export { transcribeViaInfra, transcriptionWorker } from "./transcription";
+export {
+  transcriptionWorker,
+  hasLocalMedia,
+} from "./transcription";
 export { translationWorker } from "./translation";
+export {
+  transcribeAudio,
+  decodeAudioToFloat32,
+  wavToFloat32,
+  wordsToVtt,
+  type WhisperWord,
+  type TranscribeEngineOptions,
+  type TranscribeEngineResult,
+} from "./transcription-engine";
 export {
   upscaleWorker,
   denoiseWorker,

@@ -3,6 +3,7 @@ import {
   type TranscriptWord,
   type AudioSegmentMetrics,
 } from "@openreel/core";
+import { OPENREEL_CLOUD_URL } from "../config/api-endpoints";
 
 export interface HighlightResult {
   start: number;
@@ -28,7 +29,7 @@ const DEFAULT_PREFERENCES: HighlightPreferences = {
 
 type ProgressCallback = (phase: string, progress: number, message: string) => void;
 
-const API_BASE = import.meta.env.VITE_CLOUD_API_URL || "https://api.openreel.video";
+const API_BASE = import.meta.env.VITE_CLOUD_API_URL || OPENREEL_CLOUD_URL;
 
 export async function extractHighlights(
   audioBuffer: AudioBuffer,
