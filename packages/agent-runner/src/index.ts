@@ -35,3 +35,10 @@ export {
   type EvalRunOptions,
 } from "./evals/harness";
 export { SCRIPTED_CASES } from "./evals/cases";
+export {
+  runWorkerTask,
+  WORKER_TASKS,
+  type WorkerTask,
+  type WorkerTaskContext,
+  WorkerValidationError,
+} from "./workers";
