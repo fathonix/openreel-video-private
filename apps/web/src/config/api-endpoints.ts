@@ -20,6 +20,11 @@ export const OPENREEL_TTS_URL =
 /** OpenReel transcription service (GPU) */
 export const OPENREEL_TRANSCRIBE_URL = "https://cloud.openreel.video";
 
+/** OpenReel GPU cloud job worker (upscale, matting, transcription, music-gen, …) */
+export const OPENREEL_GPU_URL =
+  import.meta.env.VITE_OPENREEL_GPU_BASE_URL ||
+  (isDev ? "http://localhost:8000" : "https://ai.openreel.video");
+
 /**
  * Third-party API base URLs.
  * These are used by the api-proxy service in dev mode (direct calls)
